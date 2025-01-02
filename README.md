@@ -25,7 +25,9 @@ tasks-end::
 ```
 
 If you have several task blocks across your notes with the same topic, it will combine them into one block:
+
 Note 1
+
 ```
 tasks-start::
 ## Buy
@@ -44,6 +46,7 @@ tasks-end::
 ```
 
 Result in the daily note
+
 ```
 tasks-start::
 ## Buy
