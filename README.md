@@ -15,35 +15,43 @@ Task Mover is a dynamic Obsidian plugin designed to gather all your unfinished t
 
 This plugin does not require you to type any queries or code. You can use simple tasks (- [ ]) or use task blocks to preserve context:
 
-`tasks-start::
+```
+tasks-start::
 ## Tasks Header
 Details and context here
 - [ ] Task1
 - [ ] Task2
-tasks-end::`
+tasks-end::
+```
 
 If you have several task blocks across your notes with the same topic, it will combine them into one block:
 Note 1
-`tasks-start::
+```
+tasks-start::
 ## Buy
 - [ ] Pasta
 - [ ] Bread
-tasks-end::`
+tasks-end::
+```
 
 Note 2
-`tasks-start::
+
+```tasks-start::
 ## Buy
 - [ ] Juice
 - [ ] Bread
-tasks-end::`
+tasks-end::
+```
 
 Result in the daily note
-`tasks-start::
+```
+tasks-start::
 ## Buy
 - [ ] Pasta
 - [ ] Bread
 - [ ] Juice
-tasks-end::`
+tasks-end::
+```
 
 **Advantages:**
 - **Automated Task Consolidation:** Task Mover automates the movement of tasks into a single note, reducing the manual effort of tracking tasks across various notes.
