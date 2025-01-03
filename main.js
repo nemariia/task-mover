@@ -59,14 +59,6 @@ class TaskMover extends obsidian.Plugin {
             },
         });
         this.addSettingTab(new TaskMoverSettingsTab(this));
-        this.addStyles();
-    }
-    addStyles() {
-        const cssLink = document.createElement("link");
-        cssLink.rel = "stylesheet";
-        cssLink.type = "text/css";
-        cssLink.href = this.app.vault.adapter.getResourcePath(`${this.manifest.dir}/styles.css`);
-        document.head.appendChild(cssLink);
     }
     async moveUnfinishedTasks() {
         new obsidian.Notice('Processing unfinished tasks...');
@@ -132,22 +124,7 @@ class TaskMover extends obsidian.Plugin {
         if (dailyNoteFile instanceof obsidian.TFile) {
             const dailyNoteContent = await this.app.vault.read(dailyNoteFile);
             // Extract existing blocks from the daily note
-            const blockMatches = dailyNoteContent.match(/tasks-start::[\s\S]*?tasks-end::/g);
-            if (blockMatches) {
-                blockMatches.forEach((block) => {
-                    const headerMatch = block.match(/## .+/);
-                    const cleanedBlock = block
-                        .replace(/^tasks-start::\s*/m, '')
-                        .replace(/\s*tasks-end::$/m, '')
-                        .replace(/## .+/m, '');
-                    if (headerMatch) {
-                        const header = headerMatch[0].trim();
-                        if (!existingBlocks[header]) {
-                            existingBlocks[header] = cleanedBlock.split('\n');
-                        }
-                    }
-                });
-            }
+            existingBlocks = this.parseDailyNoteContent(dailyNoteContent);
             newDailyNoteContent = dailyNoteContent; // Keep existing content
         }
         // Process tasks and update daily note
@@ -162,17 +139,17 @@ class TaskMover extends obsidian.Plugin {
                         .map((task) => task.trim());
                     const newTasks = taskData.standaloneTasks.filter((task) => !existingTasks.includes(task));
                     if (newTasks.length > 0) {
-                        const updatedBlock = `tasks-start::\n<div class="task-card">\n${header}${[
+                        const updatedBlock = `tasks-start::\n${header}${[
                             ...existingBlocks[header].filter((line) => !line.trim().startsWith('- [ ]')),
                             ...existingTasks,
                             ...newTasks,
-                        ].join('\n')}\n</div>\ntasks-end::`;
-                        newDailyNoteContent = newDailyNoteContent.replace(new RegExp(`tasks-start::\\n<div class="task-card">\\n${header}\\n[\\s\\S]*?tasks-end::`, 'g'), updatedBlock);
+                        ].join('\n')}\ntasks-end::`;
+                        newDailyNoteContent = newDailyNoteContent.replace(new RegExp(`tasks-start::\\n${header}\\n[\\s\\S]*?tasks-end::`, 'g'), updatedBlock);
                         updatedBlock.split('\n').forEach((el) => successfullyTransferred.add(el.trim()));
                     }
                 }
                 else {
-                    const newBlock = `tasks-start::\n<div class="task-card">\n${header}\n${taskData.standaloneTasks.join('\n')}\n</div>\ntasks-end::`;
+                    const newBlock = `tasks-start::\n${header}\n${taskData.standaloneTasks.join('\n')}\ntasks-end::`;
                     newDailyNoteContent += `\n${newBlock}\n`;
                     newBlock.split('\n').forEach((el) => successfullyTransferred.add(el.trim()));
                 }
@@ -181,40 +158,21 @@ class TaskMover extends obsidian.Plugin {
             for (const [blockKey, blockContent] of Object.entries(taskData.blocks)) {
                 const cleanedBlockContent = blockContent.filter((line) => !line.trim().startsWith('tasks-start::') && !line.trim().startsWith('tasks-end::'));
                 if (existingBlocks[blockKey]) {
-                    const existingTasks = existingBlocks[blockKey]
-                        .filter((line) => line.trim().startsWith('- [ ]'))
-                        .map((task) => task.trim());
-                    const newTasks = cleanedBlockContent
-                        .filter((line) => line.trim().startsWith('- [ ]'))
-                        .filter((task) => !existingTasks.includes(task));
-                    if (newTasks.length > 0) {
-                        const updatedBlock = `tasks-start::\n<div class="task-card">\n${blockKey}\n${[
-                            ...cleanedBlockContent.filter((line) => !newTasks.includes(line.trim()) && !existingBlocks[blockKey].includes(line.trim())),
-                            ...existingBlocks[blockKey].filter((line) => !line.trim().startsWith('- [ ]')),
-                            ...existingTasks,
-                            ...newTasks,
-                        ].map((line) => line.replace(/\n/g, '').trim()).join('\n')}\n</div>\ntasks-end::`;
-                        newDailyNoteContent = newDailyNoteContent.replace(new RegExp(`tasks-start::\\n<div class="task-card">\\n${blockKey}\\n[\\s\\S]*?tasks-end::`, 'g'), updatedBlock);
-                        updatedBlock.split('\n').forEach((el) => successfullyTransferred.add(el.trim()));
-                        console.log(updatedBlock);
-                    }
+                    const updatedBlock = this.combineBlocks(blockKey, existingBlocks[blockKey], blockContent);
+                    newDailyNoteContent = newDailyNoteContent.replace(new RegExp(`tasks-start::\\n${blockKey}\\n[\\s\\S]*?tasks-end::`, 'g'), updatedBlock.join('\n'));
+                    updatedBlock.forEach((el) => successfullyTransferred.add(el.trim()));
                 }
                 else {
-                    const newBlock = `tasks-start::\n<div class="task-card">\n${blockKey}\n${cleanedBlockContent.join('\n')}\n</div>\ntasks-end::`;
+                    const newBlock = `tasks-start::\n${blockKey}\n${cleanedBlockContent.join('\n')}\ntasks-end::`;
                     newDailyNoteContent += `\n${newBlock}\n`;
                     newBlock.split('\n').forEach((el) => successfullyTransferred.add(el.trim()));
-                    console.log(newBlock);
                 }
             }
             // Remove tasks only if deleteAfterMove is true
             if (this.settings.deleteAfterMove) {
                 const originalFile = this.app.vault.getAbstractFileByPath(source);
-                console.log(270);
-                console.log(originalFile);
-                console.log(successfullyTransferred);
                 if (originalFile instanceof obsidian.TFile) {
                     const content = await this.app.vault.read(originalFile);
-                    console.log(275);
                     const updatedLines = content
                         .split('\n')
                         .filter((line) => !successfullyTransferred.has(line.trim()));
@@ -222,6 +180,39 @@ class TaskMover extends obsidian.Plugin {
                 }
             }
         }
+        let newBlocks = this.parseDailyNoteContent(newDailyNoteContent);
+        const combinedTasks = {};
+        for (const [header, block] of Object.entries(newBlocks)) {
+            if (!combinedTasks[header]) {
+                combinedTasks[header] = [];
+            }
+            combinedTasks[header] = this.combineBlocks(header, combinedTasks[header], block);
+        }
+        console.log(258);
+        console.log(combinedTasks);
+        console.log(newDailyNoteContent);
+        for (const [header, block] of Object.entries(combinedTasks)) {
+            // Regular expression to find the block
+            const regex = new RegExp(`tasks-start::\\n${header}\\n[\\s\\S]*?tasks-end::`, 'g');
+            console.log(header);
+            // First, we'll find all matches and count them
+            const matches = [...newDailyNoteContent.matchAll(regex)];
+            console.log(266);
+            console.log(newDailyNoteContent);
+            console.log(matches);
+            if (matches.length > 0) {
+                // Replace the first occurrence with the updated content
+                newDailyNoteContent = newDailyNoteContent.replace(matches[0][0], block.join('\n'));
+                // If more than one match, remove all subsequent ones
+                if (matches.length > 1) {
+                    matches.slice(1).forEach(match => {
+                        newDailyNoteContent = newDailyNoteContent.replace(match[0], '');
+                    });
+                }
+            }
+        }
+        console.log(282);
+        console.log(newDailyNoteContent);
         if (dailyNoteFile instanceof obsidian.TFile) {
             await this.app.vault.modify(dailyNoteFile, newDailyNoteContent);
         }
@@ -229,6 +220,40 @@ class TaskMover extends obsidian.Plugin {
             await this.app.vault.create(dailyNotePath, newDailyNoteContent);
         }
         new obsidian.Notice('Unfinished tasks moved to today\'s daily note!');
+    }
+    parseDailyNoteContent(dailyNoteContent) {
+        let existingBlocks = {};
+        const blockMatches = dailyNoteContent.match(/tasks-start::[\s\S]*?tasks-end::/g);
+        if (blockMatches) {
+            blockMatches.forEach((block) => {
+                const headerMatch = block.match(/## .+/);
+                const cleanedBlock = block
+                    .replace(/^tasks-start::\s*/m, '')
+                    .replace(/\s*tasks-end::$/m, '')
+                    .replace(/## .+/m, '');
+                if (headerMatch) {
+                    const header = headerMatch[0].trim();
+                    if (!existingBlocks[header]) {
+                        existingBlocks[header] = []; // Initialize the array if it does not exist
+                    }
+                    existingBlocks[header] = [...existingBlocks[header], ...cleanedBlock.split('\n')];
+                }
+            });
+        }
+        return existingBlocks;
+    }
+    combineBlocks(blockKey, acc, block) {
+        const cleanedBlock = block.filter((line) => !line.trim().startsWith('tasks-start::') && !line.trim().startsWith('tasks-end::') && line.trim() !== blockKey);
+        acc = acc.filter((line) => !line.trim().startsWith('tasks-start::') && !line.trim().startsWith('tasks-end::') && line.trim() !== blockKey);
+        const combinedContent = [...acc, ...cleanedBlock];
+        const uniqueContent = Array.from(new Set(combinedContent.map((line) => line.trim())));
+        const updatedBlock = [
+            'tasks-start::',
+            blockKey,
+            ...uniqueContent,
+            'tasks-end::'
+        ].map((line) => line.replace(/\n/g, '').trim());
+        return updatedBlock;
     }
     async saveSettings() {
         await this.saveData(this.settings);
