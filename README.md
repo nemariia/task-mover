@@ -56,11 +56,15 @@ tasks-start::
 tasks-end::
 ```
 
-**Advantages:**
+## ⚠️ Be careful!
+If the **Delete Original Tasks** is on, it will remove the unfinished tasks from the original notes. Turn it on only if this is what you intend to to.
+
+## Advantages
 - **Automated Task Consolidation:** Task Mover automates the movement of tasks into a single note, reducing the manual effort of tracking tasks across various notes.
 - **Context Preservation:** Maintains the context surrounding each task by using task blocks, which allows grouping by topic or the original note.
 - **Customization Options:** Task Mover allows to choose the specific folder to scan and the option to delete tasks post-movement.
 - **Focus on Task Management:** Task Mover is specifically designed for task management.
 
 TODO:
-Allow scheduling task movement automatically
+- Allow scheduling task movement automatically
+- Improve successfully transferred check
