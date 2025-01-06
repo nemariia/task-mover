@@ -65,66 +65,16 @@ class TaskMover extends obsidian.Plugin {
         const today = new Date().toISOString().split('T')[0];
         const dailyNotePath = `${this.settings.dailyNotesFolder}/${today}.md`;
         const dailyNoteFile = this.app.vault.getAbstractFileByPath(dailyNotePath);
-        const tasksBySource = {};
-        const folderToScan = this.settings.folderToScan;
-        // Get all markdown files
-        const files = this.app.vault
-            .getMarkdownFiles()
-            .filter((file) => (folderToScan ? file.path.startsWith(folderToScan) : true) &&
-            file.path !== dailyNotePath);
-        // Process source files
-        for (const file of files) {
-            const content = await this.app.vault.read(file);
-            const lines = content.split('\n');
-            let inTaskBlock = false;
-            let taskBlock = [];
-            let blockKey = null;
-            let standaloneTasks = [];
-            for (const line of lines) {
-                if (line.trim() === 'tasks-start::') {
-                    inTaskBlock = true;
-                    taskBlock = [];
-                    blockKey = null;
-                    continue;
-                }
-                if (inTaskBlock) {
-                    if (!blockKey && line.trim().startsWith('##')) {
-                        blockKey = line.trim(); // Set the block key as the header
-                        continue;
-                    }
-                    taskBlock.push(line);
-                    if (line.trim() === 'tasks-end::') {
-                        inTaskBlock = false;
-                        if (blockKey) {
-                            if (!tasksBySource[file.path]) {
-                                tasksBySource[file.path] = { blocks: {}, standaloneTasks: [] };
-                            }
-                            tasksBySource[file.path].blocks[blockKey] = taskBlock;
-                        }
-                        taskBlock = [];
-                    }
-                }
-                else {
-                    // Capture standalone tasks outside of blocks
-                    if (line.trim().startsWith('- [ ]')) {
-                        standaloneTasks.push(line.trim());
-                    }
-                }
-            }
-            // Add standalone tasks
-            if (standaloneTasks.length > 0) {
-                if (!tasksBySource[file.path]) {
-                    tasksBySource[file.path] = { blocks: {}, standaloneTasks: [] };
-                }
-                tasksBySource[file.path].standaloneTasks.push(...standaloneTasks);
-            }
-        }
+        let tasksBySource = {};
+        tasksBySource = await this.collectTasks(dailyNotePath);
         let newDailyNoteContent = `# 🗂️Unfinished Tasks\n`;
         let existingBlocks = {};
         if (dailyNoteFile instanceof obsidian.TFile) {
             const dailyNoteContent = await this.app.vault.read(dailyNoteFile);
             // Extract existing blocks from the daily note
-            existingBlocks = this.parseDailyNoteContent(dailyNoteContent);
+            existingBlocks = dailyNoteFile
+                ? this.parseDailyNoteContent(await this.app.vault.read(dailyNoteFile))
+                : {};
             newDailyNoteContent = dailyNoteContent; // Keep existing content
         }
         // Process tasks and update daily note
@@ -188,18 +138,11 @@ class TaskMover extends obsidian.Plugin {
             }
             combinedTasks[header] = this.combineBlocks(header, combinedTasks[header], block);
         }
-        console.log(258);
-        console.log(combinedTasks);
-        console.log(newDailyNoteContent);
         for (const [header, block] of Object.entries(combinedTasks)) {
             // Regular expression to find the block
             const regex = new RegExp(`tasks-start::\\n${header}\\n[\\s\\S]*?tasks-end::`, 'g');
-            console.log(header);
             // First, we'll find all matches and count them
             const matches = [...newDailyNoteContent.matchAll(regex)];
-            console.log(266);
-            console.log(newDailyNoteContent);
-            console.log(matches);
             if (matches.length > 0) {
                 // Replace the first occurrence with the updated content
                 newDailyNoteContent = newDailyNoteContent.replace(matches[0][0], block.join('\n'));
@@ -211,8 +154,6 @@ class TaskMover extends obsidian.Plugin {
                 }
             }
         }
-        console.log(282);
-        console.log(newDailyNoteContent);
         if (dailyNoteFile instanceof obsidian.TFile) {
             await this.app.vault.modify(dailyNoteFile, newDailyNoteContent);
         }
@@ -241,6 +182,63 @@ class TaskMover extends obsidian.Plugin {
             });
         }
         return existingBlocks;
+    }
+    async collectTasks(dailyNotePath) {
+        const tasksBySource = {};
+        const folderToScan = this.settings.folderToScan;
+        // Get all markdown files
+        const files = this.app.vault
+            .getMarkdownFiles()
+            .filter((file) => (folderToScan ? file.path.startsWith(folderToScan) : true) &&
+            file.path !== dailyNotePath);
+        // Process source files
+        for (const file of files) {
+            const content = await this.app.vault.read(file);
+            const lines = content.split('\n');
+            let inTaskBlock = false;
+            let taskBlock = [];
+            let blockKey = null;
+            let standaloneTasks = [];
+            for (const line of lines) {
+                if (line.trim() === 'tasks-start::') {
+                    inTaskBlock = true;
+                    taskBlock = [];
+                    blockKey = null;
+                    continue;
+                }
+                if (inTaskBlock) {
+                    if (!blockKey && line.trim().startsWith('##')) {
+                        blockKey = line.trim(); // Set the block key as the header
+                        continue;
+                    }
+                    taskBlock.push(line);
+                    if (line.trim() === 'tasks-end::') {
+                        inTaskBlock = false;
+                        if (blockKey) {
+                            if (!tasksBySource[file.path]) {
+                                tasksBySource[file.path] = { blocks: {}, standaloneTasks: [] };
+                            }
+                            tasksBySource[file.path].blocks[blockKey] = taskBlock;
+                        }
+                        taskBlock = [];
+                    }
+                }
+                else {
+                    // Capture standalone tasks outside of blocks
+                    if (line.trim().startsWith('- [ ]')) {
+                        standaloneTasks.push(line.trim());
+                    }
+                }
+            }
+            // Add standalone tasks
+            if (standaloneTasks.length > 0) {
+                if (!tasksBySource[file.path]) {
+                    tasksBySource[file.path] = { blocks: {}, standaloneTasks: [] };
+                }
+                tasksBySource[file.path].standaloneTasks.push(...standaloneTasks);
+            }
+        }
+        return tasksBySource;
     }
     combineBlocks(blockKey, acc, block) {
         const cleanedBlock = block.filter((line) => !line.trim().startsWith('tasks-start::') && !line.trim().startsWith('tasks-end::') && line.trim() !== blockKey);
