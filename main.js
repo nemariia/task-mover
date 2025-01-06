@@ -211,14 +211,24 @@ class TaskMover extends obsidian.Plugin {
                         blockKey = line.trim(); // Set the block key as the header
                         continue;
                     }
+                    if (line.trim().startsWith('- [x]')) {
+                        continue;
+                    }
                     taskBlock.push(line);
                     if (line.trim() === 'tasks-end::') {
                         inTaskBlock = false;
-                        if (blockKey) {
-                            if (!tasksBySource[file.path]) {
-                                tasksBySource[file.path] = { blocks: {}, standaloneTasks: [] };
+                        if (!tasksBySource[file.path]) {
+                            tasksBySource[file.path] = { blocks: {}, standaloneTasks: [] };
+                        }
+                        if (this.hasUnfinishedTasks(taskBlock)) {
+                            // If the block has a header
+                            if (blockKey) {
+                                tasksBySource[file.path].blocks[blockKey] = taskBlock;
                             }
-                            tasksBySource[file.path].blocks[blockKey] = taskBlock;
+                            // If no header
+                            else {
+                                tasksBySource[file.path].blocks[file.basename] = taskBlock;
+                            }
                         }
                         taskBlock = [];
                     }
@@ -239,6 +249,10 @@ class TaskMover extends obsidian.Plugin {
             }
         }
         return tasksBySource;
+    }
+    hasUnfinishedTasks(blockContent) {
+        const unfinishedTaskRegex = /^\s*-\s\[ \]/; // Matches lines that start with "- [ ]" (ignoring leading spaces)
+        return blockContent.some((line) => unfinishedTaskRegex.test(line));
     }
     combineBlocks(blockKey, acc, block) {
         const cleanedBlock = block.filter((line) => !line.trim().startsWith('tasks-start::') && !line.trim().startsWith('tasks-end::') && line.trim() !== blockKey);
