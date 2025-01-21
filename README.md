@@ -67,4 +67,3 @@ If the **Delete Original Tasks** is on, it will remove the unfinished tasks from
 
 TODO:
 - Allow scheduling task movement automatically
-- Improve successfully transferred check
