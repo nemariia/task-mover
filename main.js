@@ -63,7 +63,7 @@ class TaskMover extends obsidian.Plugin {
     async moveUnfinishedTasks() {
         new obsidian.Notice('Processing unfinished tasks...');
         const today = new Date().toISOString().split('T')[0];
-        const dailyNotePath = `${this.settings.dailyNotesFolder}/${today}.md`;
+        const dailyNotePath = obsidian.normalizePath(`${this.settings.dailyNotesFolder}/${today}.md`);
         const dailyNoteFile = this.app.vault.getAbstractFileByPath(dailyNotePath);
         let tasksBySource = {};
         tasksBySource = await this.collectTasks(dailyNotePath);
@@ -145,7 +145,7 @@ class TaskMover extends obsidian.Plugin {
             }
             try {
                 if (dailyNoteFile instanceof obsidian.TFile) {
-                    await this.app.vault.modify(dailyNoteFile, newDailyNoteContent);
+                    await this.app.vault.process(dailyNoteFile, data => newDailyNoteContent);
                 }
                 else {
                     await this.app.vault.create(dailyNotePath, newDailyNoteContent);
@@ -158,7 +158,7 @@ class TaskMover extends obsidian.Plugin {
                         const updatedLines = content
                             .split('\n')
                             .filter((line) => !successfullyTransferred.has(line.trim()));
-                        await this.app.vault.modify(originalFile, updatedLines.join('\n'));
+                        await this.app.vault.process(originalFile, data => updatedLines.join('\n'));
                     }
                 }
                 new obsidian.Notice('Unfinished tasks moved to today\'s daily note!');
