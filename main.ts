@@ -295,7 +295,7 @@ export default class TaskMover extends Plugin {
 
     // Process source files
     for (const file of files) {
-      const content = await this.app.vault.read(file);
+      const content = await this.app.vault.cachedRead(file);
       const lines = content.split('\n');
 
       let inTaskBlock = false;
