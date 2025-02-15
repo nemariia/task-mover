@@ -38,10 +38,8 @@ class TaskMoverSettingsTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    containerEl.createEl("h2", { text: "Task Mover Settings" });
-
     new Setting(containerEl)
-      .setName("Folder to Scan")
+      .setName("Folder to scan")
       .setDesc("Specify the folder to search for unfinished tasks.")
       .addText((text) =>
         text
@@ -54,7 +52,7 @@ class TaskMoverSettingsTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Daily Notes Folder")
+      .setName("Daily notes folder")
       .setDesc("Specify the folder where your daily notes are located.")
       .addText((text) =>
         text
@@ -67,7 +65,7 @@ class TaskMoverSettingsTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Delete Original Tasks")
+      .setName("Delete original tasks")
       .setDesc("Delete tasks from the original notes after moving them.")
       .addToggle((toggle) =>
         toggle
@@ -87,7 +85,7 @@ export default class TaskMover extends Plugin {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
     this.addCommand({
       id: 'move-todos-to-daily-note',
-      name: 'Move Unfinished Tasks to Daily Note',
+      name: 'Move unfinished tasks to daily note',
       callback: async () => {
         await this.moveUnfinishedTasks();
       },
