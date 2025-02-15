@@ -1,7 +1,7 @@
-# Task Mover Plugin for Obsidian
+# Task Mover Plugin
 
 ## Description
-Task Mover is a dynamic Obsidian plugin designed to gather all your unfinished tasks in one place. It automatically locates unfinished tasks across your notes and consolidates them into a single daily note, ensuring you never lose track of your pending activities. It will group the tasks by the original file or by topic. It can also gather the surrounding information and move it together with the tasks.
+Task Mover is a dynamic plugin designed to gather all your unfinished tasks in one place. It automatically locates unfinished tasks across your notes and consolidates them into a single daily note, ensuring you never lose track of your pending activities. It will group the tasks by the original file or by topic. It can also gather the surrounding information and move it together with the tasks.
 
 ## Configuration
    - The available settings:
