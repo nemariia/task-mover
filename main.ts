@@ -1,4 +1,4 @@
-import { Plugin, PluginSettingTab, Setting, TFile, Notice, normalizePath } from "obsidian";
+import { App, Plugin, PluginSettingTab, Setting, TFile, Notice, normalizePath, TFolder, TextComponent, AbstractInputSuggest } from "obsidian";
 
 interface PluginSettings {
   folderToScan: string;
@@ -26,6 +26,32 @@ interface CombinedTasks {
 }
 
 
+// Folder suggestion for settings
+class FolderSuggest extends AbstractInputSuggest<TFolder> {
+  inputEl: HTMLInputElement;
+
+  constructor(app: App, inputEl: HTMLInputElement) {
+    super(app, inputEl);
+    this.inputEl = inputEl;
+  }
+
+  getSuggestions(inputStr: string): TFolder[] {
+    return this.app.vault
+      .getAllLoadedFiles()
+      .filter((file) => file instanceof TFolder && file.path.toLowerCase().includes(inputStr.toLowerCase())) as TFolder[];
+  }
+
+  renderSuggestion(folder: TFolder, el: HTMLElement): void {
+    el.setText(folder.path);
+  }
+
+  selectSuggestion(folder: TFolder): void {
+    this.inputEl.value = folder.path;
+    this.inputEl.dispatchEvent(new Event("input"));
+  }
+}
+
+
 class TaskMoverSettingsTab extends PluginSettingTab {
   plugin: TaskMover;
 
@@ -41,28 +67,31 @@ class TaskMoverSettingsTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName("Folder to scan")
       .setDesc("Specify the folder to search for unfinished tasks.")
-      .addText((text) =>
-        text
-          .setPlaceholder("e.g., Tasks")
+      .addText((text) => {
+        text.setPlaceholder("e.g., Tasks")
           .setValue(this.plugin.settings.folderToScan)
           .onChange(async (value) => {
             this.plugin.settings.folderToScan = value;
             await this.plugin.saveSettings();
-          })
-      );
+          });
+
+        new FolderSuggest(this.app, text.inputEl);
+      });
 
     new Setting(containerEl)
       .setName("Daily notes folder")
       .setDesc("Specify the folder where your daily notes are located.")
-      .addText((text) =>
+      .addText((text) => {
         text
           .setPlaceholder("e.g., Daily")
           .setValue(this.plugin.settings.dailyNotesFolder)
           .onChange(async (value) => {
             this.plugin.settings.dailyNotesFolder = value;
             await this.plugin.saveSettings();
-          })
-      );
+          });
+
+          new FolderSuggest(this.app, text.inputEl);
+        });
 
     new Setting(containerEl)
       .setName("Delete original tasks")
@@ -77,6 +106,7 @@ class TaskMoverSettingsTab extends PluginSettingTab {
       );
   }
 }
+
 
 export default class TaskMover extends Plugin {
   settings!: PluginSettings;
