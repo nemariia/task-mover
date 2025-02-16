@@ -139,7 +139,6 @@ export default class TaskMover extends Plugin {
     let existingBlocks: Record<string, string[]> = {};
     if (dailyNoteFile instanceof TFile) {
       const dailyNoteContent = await this.app.vault.read(dailyNoteFile);
-
       // Extract existing blocks from the daily note
       existingBlocks = dailyNoteFile
       ? this.parseDailyNoteContent(dailyNoteContent)
@@ -234,10 +233,13 @@ export default class TaskMover extends Plugin {
 
 	    try {
         if (dailyNoteFile instanceof TFile) {
+          console.log('trying to write');
           await this.app.vault.process(dailyNoteFile, data => {
             return newDailyNoteContent;
           });
         } else {
+          // A bug here
+          console.log('trying to create');
           await this.app.vault.create(dailyNotePath, newDailyNoteContent);
         }
 
@@ -249,7 +251,9 @@ export default class TaskMover extends Plugin {
             const updatedLines = content
               .split('\n')
               .filter((line) => !successfullyTransferred.has(line.trim()));
-            await this.app.vault.process(originalFile, data => updatedLines.join('\n'));
+            await this.app.vault.process(originalFile, data => {
+              return updatedLines.join('\n')
+            });
           }
         }
         new Notice('Unfinished tasks moved to today\'s daily note!');
