@@ -128,7 +128,7 @@ export default class TaskMover extends Plugin {
 
     const today = new Date().toISOString().split('T')[0];
     const dailyNotePath = normalizePath(`${this.settings.dailyNotesFolder}/${today}.md`);
-    const dailyNoteFile = this.app.vault.getAbstractFileByPath(dailyNotePath);
+    let dailyNoteFile = this.app.vault.getAbstractFileByPath(dailyNotePath);
 
     let tasksBySource: TasksBySource = {};
     tasksBySource = await this.collectTasks(dailyNotePath);
@@ -144,6 +144,11 @@ export default class TaskMover extends Plugin {
       ? this.parseDailyNoteContent(dailyNoteContent)
       : {};
       newDailyNoteContent = dailyNoteContent; // Keep existing content
+    }
+    else {
+      // Create the daily note if doesn't exist
+      await this.app.vault.create(dailyNotePath, newDailyNoteContent);
+      dailyNoteFile = this.app.vault.getAbstractFileByPath(dailyNotePath);
     }
 
     // Process tasks and update daily note
@@ -205,6 +210,7 @@ export default class TaskMover extends Plugin {
 	    const combinedTasks: CombinedTasks = {};
 
 	    for (const [header, block] of Object.entries(newBlocks)) {
+
 		    if (!combinedTasks[header]) {
 			    combinedTasks[header] = [];
 		    }
@@ -233,14 +239,11 @@ export default class TaskMover extends Plugin {
 
 	    try {
         if (dailyNoteFile instanceof TFile) {
-          console.log('trying to write');
           await this.app.vault.process(dailyNoteFile, data => {
             return newDailyNoteContent;
           });
         } else {
-          // A bug here
-          console.log('trying to create');
-          await this.app.vault.create(dailyNotePath, newDailyNoteContent);
+          throw Error("Something went wrong, and the daily note wasn't created");
         }
 
         // Remove tasks only if deleteAfterMove is true
