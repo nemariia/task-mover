@@ -234,7 +234,9 @@ export default class TaskMover extends Plugin {
 
 	    try {
         if (dailyNoteFile instanceof TFile) {
-          await this.app.vault.process(dailyNoteFile, data => newDailyNoteContent);
+          await this.app.vault.process(dailyNoteFile, data => {
+            return newDailyNoteContent;
+          });
         } else {
           await this.app.vault.create(dailyNotePath, newDailyNoteContent);
         }
