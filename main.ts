@@ -1,4 +1,4 @@
-import { App, Plugin, PluginSettingTab, Setting, TFile, Notice, normalizePath, TFolder, TextComponent, AbstractInputSuggest } from "obsidian";
+import { App, Plugin, PluginSettingTab, Setting, TFile, Notice, normalizePath, TFolder, AbstractInputSuggest, moment } from "obsidian";
 
 interface PluginSettings {
   folderToScan: string;
@@ -138,45 +138,12 @@ export default class TaskMover extends Plugin {
     this.addSettingTab(new TaskMoverSettingsTab(this));
   }
 
-  // Auxiliary function for date formatting
-  formatDate(format: string): string {
-    const today = new Date();
-  
-    const tokens: Record<string, string> = {
-      "YYYY": today.getFullYear().toString(),                // 2024
-      "YY": today.getFullYear().toString().slice(-2),        // 24
-      "MMMM": today.toLocaleString("default", { month: "long" }),  // February
-      "MMM": today.toLocaleString("default", { month: "short" }),  // Feb
-      "MM": (today.getMonth() + 1).toString().padStart(2, "0"),    // 02
-      "M": (today.getMonth() + 1).toString(),                      // 2
-      "DD": today.getDate().toString().padStart(2, "0"),      // 15
-      "D": today.getDate().toString(),                        // 15
-      "dddd": today.toLocaleString("default", { weekday: "long" }),   // Thursday
-      "ddd": today.toLocaleString("default", { weekday: "short" }),   // Thu
-      "HH": today.getHours().toString().padStart(2, "0"),     // 08 (24-hour)
-      "H": today.getHours().toString(),                      // 8 (24-hour)
-      "hh": ((today.getHours() % 12) || 12).toString().padStart(2, "0"), // 08 (12-hour)
-      "h": ((today.getHours() % 12) || 12).toString(),       // 8 (12-hour)
-      "mm": today.getMinutes().toString().padStart(2, "0"),  // 05
-      "m": today.getMinutes().toString(),                    // 5
-      "ss": today.getSeconds().toString().padStart(2, "0"),  // 09
-      "s": today.getSeconds().toString(),                    // 9
-      "A": today.getHours() >= 12 ? "PM" : "AM",             // AM/PM
-      "a": today.getHours() >= 12 ? "pm" : "am"              // am/pm
-    };
-  
-    // Replace all tokens dynamically
-    return format.replace(
-      /YYYY|YY|MMMM|MMM|MM|M|DD|D|dddd|ddd|HH|H|hh|h|mm|m|ss|s|A|a/g,
-      (match) => tokens[match]
-    );
-  }
-
   async moveUnfinishedTasks() {
     new Notice('Processing unfinished tasks...');
 
     const dateFormat = this.settings.dailyNoteFormat || "YYYY-MM-DD";
-    const today = this.formatDate(dateFormat);
+    const today = (moment as any)().format(dateFormat);
+    
     const dailyNotePath = normalizePath(`${this.settings.dailyNotesFolder}/${today}.md`);
     let dailyNoteFile = this.app.vault.getAbstractFileByPath(dailyNotePath);
 
