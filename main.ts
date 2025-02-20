@@ -152,10 +152,11 @@ export default class TaskMover extends Plugin {
 
     // If the Daily Note doesn't exist
     let newDailyNoteContent = `# 🗂️Unfinished Tasks\n`;
+    let dailyNoteContent = "";
     
     let existingBlocks: Record<string, string[]> = {};
     if (dailyNoteFile instanceof TFile) {
-      const dailyNoteContent = await this.app.vault.read(dailyNoteFile);
+      dailyNoteContent = await this.app.vault.read(dailyNoteFile);
       // Extract existing blocks from the daily note
       existingBlocks = dailyNoteFile
       ? this.parseDailyNoteContent(dailyNoteContent)
@@ -256,7 +257,7 @@ export default class TaskMover extends Plugin {
 
 	    try {
         if (dailyNoteFile instanceof TFile) {
-          await this.app.vault.process(dailyNoteFile, data => {
+          await this.app.vault.process(dailyNoteFile, dailyNoteContent => {
             return newDailyNoteContent;
           });
         } else {
@@ -265,13 +266,13 @@ export default class TaskMover extends Plugin {
 
         // Remove tasks only if deleteAfterMove is true
         if (this.settings.deleteAfterMove) {
-          const originalFile = this.app.vault.getAbstractFileByPath(source);
-          if (originalFile instanceof TFile) {
+          const originalFile = this.app.vault.getFileByPath(source);
+          if (originalFile) {
             const content = await this.app.vault.read(originalFile);
             const updatedLines = content
               .split('\n')
               .filter((line) => !successfullyTransferred.has(line.trim()));
-            await this.app.vault.process(originalFile, data => {
+            await this.app.vault.process(originalFile, content => {
               return updatedLines.join('\n')
             });
           }
