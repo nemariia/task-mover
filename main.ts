@@ -5,6 +5,7 @@ interface PluginSettings {
   deleteAfterMove: boolean;
   dailyNotesFolder: string;
   dailyNoteFormat: string;
+  moveOnlyInTags: boolean;
   scheduleTime: string;
 }
   
@@ -13,6 +14,7 @@ const DEFAULT_SETTINGS: PluginSettings = {
   deleteAfterMove: false,
   dailyNotesFolder: "Daily",
   dailyNoteFormat: "YYYY-MM-DD",
+  moveOnlyInTags: false,
   scheduleTime: "00:00", // Midnight
 };
 
@@ -108,6 +110,18 @@ class TaskMoverSettingsTab extends PluginSettingTab {
          })
      );
 
+     new Setting(containerEl)
+     .setName("Move only tasks inside task tags")
+     .setDesc("Only move the tasks between 'tasks-start::’ and 'tasks-end::.")
+     .addToggle((toggle) =>
+       toggle
+         .setValue(this.plugin.settings.moveOnlyInTags)
+         .onChange(async (value) => {
+           this.plugin.settings.moveOnlyInTags = value;
+           await this.plugin.saveSettings();
+         })
+     );
+    
     new Setting(containerEl)
       .setName("Delete original tasks")
       .setDesc("Delete tasks from the original notes after moving them.")
@@ -368,7 +382,7 @@ export default class TaskMover extends Plugin {
           }
         } else {
           // Capture standalone tasks outside of blocks
-          if (line.trim().startsWith('- [ ]')) {
+          if (!this.settings.moveOnlyInTags && line.trim().startsWith('- [ ]')) {
             standaloneTasks.push(line.trim());
           }
         }
