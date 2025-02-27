@@ -70,3 +70,4 @@ TODO:
 - ~~Allow the user define a daily note format~~
 - Allow scanning by tags
 - Allow specifying multiple folders/tags
+- Add a way to ignore some tasks
