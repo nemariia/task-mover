@@ -5,9 +5,9 @@ Task Mover is a dynamic plugin designed to gather all your unfinished tasks in o
 
 ## Configuration
    - The available settings:
-     - **Folder to Scan:** Specify the folder where the plugin should search for tasks.
-     - **Daily Notes Folder:** Define where the tasks should be moved.
-     - **Delete Original Tasks:** Choose whether to delete tasks from the original notes after moving them.
+     - **Folder to scan:** Specify the folder where the plugin should search for tasks.
+     - **Daily notes folder:** Define where the tasks should be moved.
+     - **Delete original tasks:** Choose whether to delete tasks from the original notes after moving them.
 
 ## Usage
    - Use the command `Move Unfinished Tasks to Daily Note` to execute the task consolidation process.
@@ -57,14 +57,14 @@ tasks-end::
 ```
 
 ## ⚠️ Be careful!
-If the **Delete Original Tasks** is on, it will remove the unfinished tasks from the original notes. Turn it on only if this is what you intend to to.
+If the **Delete original tasks** is on, it will remove the unfinished tasks from the original notes. Turn it on only if this is what you intend to to.
 
 ## Advantages
-- **Automated Task Consolidation:** Task Mover automates the movement of tasks into a single note, reducing the manual effort of tracking tasks across various notes.
-- **Context Preservation:** Maintains the context surrounding each task by using task blocks, which allows grouping by topic or the original note.
-- **Customization Options:** Task Mover allows to choose the specific folder to scan and the option to delete tasks post-movement.
-- **Focus on Task Management:** Task Mover is specifically designed for task management.
+- **Automated task consolidation:** Task Mover automates the movement of tasks into a single note, reducing the manual effort of tracking tasks across various notes.
+- **Context preservation:** Maintains the context surrounding each task by using task blocks, which allows grouping by topic or the original note.
+- **Customization options:** Task Mover allows to choose the specific folder to scan and the option to delete tasks post-movement.
+- **Focus on task management:** Task Mover is specifically designed for task management.
 
 TODO:
 - Allow scheduling task movement automatically
-- Allow the user define a daily note format
+- ~~Allow the user define a daily note format~~
