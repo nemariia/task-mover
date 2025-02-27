@@ -112,7 +112,7 @@ class TaskMoverSettingsTab extends PluginSettingTab {
 
      new Setting(containerEl)
      .setName("Move only tasks inside task tags")
-     .setDesc("Only move the tasks between 'tasks-start::’ and 'tasks-end::.")
+     .setDesc("Only move the tasks between 'tasks-start::' and 'tasks-end::'.")
      .addToggle((toggle) =>
        toggle
          .setValue(this.plugin.settings.moveOnlyInTags)
