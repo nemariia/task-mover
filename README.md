@@ -38,7 +38,8 @@ tasks-end::
 
 Note 2
 
-```tasks-start::
+```
+tasks-start::
 ## Buy
 - [ ] Juice
 - [ ] Bread
