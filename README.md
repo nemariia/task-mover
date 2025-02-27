@@ -68,3 +68,5 @@ If the **Delete original tasks** is on, it will remove the unfinished tasks from
 TODO:
 - Allow scheduling task movement automatically
 - ~~Allow the user define a daily note format~~
+- Allow scanning by tags
+- Allow specifying multiple folders/tags
