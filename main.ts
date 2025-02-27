@@ -152,40 +152,16 @@ export default class TaskMover extends Plugin {
     this.addSettingTab(new TaskMoverSettingsTab(this));
   }
 
-  async moveUnfinishedTasks() {
-    new Notice('Processing unfinished tasks...');
+  processAllTasks(dailyNoteContent: string, tasksBySource: TasksBySource = {}) {   
 
-    const dateFormat = this.settings.dailyNoteFormat || "YYYY-MM-DD";
-    const today = (moment as any)().format(dateFormat);
-    
-    const dailyNotePath = normalizePath(`${this.settings.dailyNotesFolder}/${today}.md`);
-    let dailyNoteFile = this.app.vault.getAbstractFileByPath(dailyNotePath);
-
-    let tasksBySource: TasksBySource = {};
-    tasksBySource = await this.collectTasks(dailyNotePath);
-
-    // If the Daily Note doesn't exist
-    let newDailyNoteContent = `# 🗂️Unfinished Tasks\n`;
-    let dailyNoteContent = "";
-    
     let existingBlocks: Record<string, string[]> = {};
-    if (dailyNoteFile instanceof TFile) {
-      dailyNoteContent = await this.app.vault.read(dailyNoteFile);
-      // Extract existing blocks from the daily note
-      existingBlocks = dailyNoteFile
-      ? this.parseDailyNoteContent(dailyNoteContent)
-      : {};
-      newDailyNoteContent = dailyNoteContent; // Keep existing content
-    }
-    else {
-      // Create the daily note if doesn't exist
-      await this.app.vault.create(dailyNotePath, newDailyNoteContent);
-      dailyNoteFile = this.app.vault.getAbstractFileByPath(dailyNotePath);
-    }
+    
+    // Extract existing blocks from the daily note
+    existingBlocks = this.parseDailyNoteContent(dailyNoteContent);
+    let newDailyNoteContent = dailyNoteContent;
 
     // Process tasks and update daily note
     for (const [source, taskData] of Object.entries(tasksBySource)) {
-      const successfullyTransferred = new Set<string>();
 
       // Process standalone tasks
       if (taskData.standaloneTasks.length > 0) {
@@ -209,12 +185,10 @@ export default class TaskMover extends Plugin {
               new RegExp(`tasks-start::\\n${header}\\n[\\s\\S]*?tasks-end::`, 'g'),
               updatedBlock
             );
-            updatedBlock.split('\n').forEach((el) => successfullyTransferred.add(el.trim()));
           }
         } else {
 			  const newBlock = `tasks-start::\n${header}\n${taskData.standaloneTasks.join('\n')}\ntasks-end::`;
 			  newDailyNoteContent += `\n${newBlock}\n`;
-			  newBlock.split('\n').forEach((el) => successfullyTransferred.add(el.trim()));
         }
       }
 
@@ -230,11 +204,9 @@ export default class TaskMover extends Plugin {
             new RegExp(`tasks-start::\\n${blockKey}\\n[\\s\\S]*?tasks-end::`, 'g'),
             updatedBlock.join('\n')
           );
-          updatedBlock.forEach((el) => successfullyTransferred.add(el.trim()));
         } else {
 			    const newBlock = `tasks-start::\n${blockKey}\n${cleanedBlockContent.join('\n')}\ntasks-end::`;
 			    newDailyNoteContent += `\n${newBlock}\n`;
-			    newBlock.split('\n').forEach((el) => successfullyTransferred.add(el.trim()));
         }
       }
 
@@ -268,35 +240,60 @@ export default class TaskMover extends Plugin {
 			    }
 		    }
 	    }
+    }
+    return newDailyNoteContent;
+  }
 
-	    try {
-        if (dailyNoteFile instanceof TFile) {
-          await this.app.vault.process(dailyNoteFile, dailyNoteContent => {
-            return newDailyNoteContent;
-          });
-        } else {
-          throw Error("Something went wrong, and the daily note wasn't created");
-        }
+  async moveUnfinishedTasks() {
+    new Notice('Processing unfinished tasks...');
 
-        // Remove tasks only if deleteAfterMove is true
+    const dateFormat = this.settings.dailyNoteFormat || "YYYY-MM-DD";
+    const today = (moment as any)().format(dateFormat);
+    
+    const dailyNotePath = normalizePath(`${this.settings.dailyNotesFolder}/${today}.md`);
+    let dailyNoteFile = this.app.vault.getAbstractFileByPath(dailyNotePath);
+
+    let tasksBySource: TasksBySource = {};
+    tasksBySource = await this.collectTasks(dailyNotePath);
+    
+    // Write tasks to the daily note
+    try {
+      if (dailyNoteFile instanceof TFile){
+        await this.app.vault.process(dailyNoteFile, dailyNoteContent => {
+          return this.processAllTasks(dailyNoteContent, tasksBySource);
+        });
+      } else {
+        let newDailyNoteContent = `# 🗂️Unfinished Tasks\n` + this.processAllTasks('', tasksBySource);
+        await this.app.vault.create(dailyNotePath, newDailyNoteContent);
+      }
+
+      // Remove tasks only if deleteAfterMove is true
+      for (const source in tasksBySource){
+        const successfullyTransferred = new Set<string>();
+
+        const taskBlocks = Object.values(tasksBySource[source]['blocks']).flat();
+        const standaloneTasks = Object.values(tasksBySource[source]['standaloneTasks']).flat();
+
+        let taskLines = taskBlocks.concat(standaloneTasks);
         if (this.settings.deleteAfterMove) {
           const originalFile = this.app.vault.getFileByPath(source);
           if (originalFile) {
-            const content = await this.app.vault.read(originalFile);
-            const updatedLines = content
-              .split('\n')
-              .filter((line) => !successfullyTransferred.has(line.trim()));
+            taskLines.forEach((el) => successfullyTransferred.add(el.trim()));
             await this.app.vault.process(originalFile, content => {
-              return updatedLines.join('\n')
+              return content
+                .split('\n')
+                .filter((line) => !successfullyTransferred.has(line.trim()))
+                .join('\n')
+                .replace(/tasks-start::\s*\ntasks-end::\s*\n?/g, "");
             });
           }
         }
-        new Notice('Unfinished tasks moved to today\'s daily note!');
       }
-      catch (error: any) {
-        console.error("An unexpected error occurred:", error);
-        new Notice("An error occurred while processing the daily note. Check the console for details.");
-      }
+      new Notice('Unfinished tasks moved to today\'s daily note!');
+    }
+    catch (error: any) {
+      console.error("An unexpected error occurred:", error);
+      new Notice("An error occurred while processing the daily note. Check the console for details.");
     }
   }
   
@@ -355,15 +352,14 @@ export default class TaskMover extends Plugin {
         if (inTaskBlock) {
           if (!blockKey && line.trim().startsWith('##')) {
             blockKey = line.trim(); // Set the block key as the header
-            continue;
           }
 
           if (line.trim().startsWith('- [x]')) {
             continue;
           }
-          taskBlock.push(line);
-
-          if (line.trim() === 'tasks-end::') {
+          if (line.trim() !== 'tasks-end::') {
+            taskBlock.push(line);
+          } else {
             inTaskBlock = false;
             if (!tasksBySource[file.path]) {
               tasksBySource[file.path] = { blocks: {}, standaloneTasks: [] };
